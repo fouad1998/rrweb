@@ -60,6 +60,7 @@ function record<T = eventWithTime>(
     userTriggeredOnInput = false,
     collectFonts = false,
     plugins,
+    doc,
     keepIframeSrcFn = () => false,
   } = options;
   // runtime checks for user options
@@ -218,7 +219,7 @@ function record<T = eventWithTime>(
     );
 
     mutationBuffers.forEach((buf) => buf.lock()); // don't allow any mirror modifications during snapshotting
-    const [node, idNodeMap] = snapshot(document, {
+    const [node, idNodeMap] = snapshot(typeof doc === "object" ? doc : document, {
       blockClass,
       blockSelector,
       maskTextClass,

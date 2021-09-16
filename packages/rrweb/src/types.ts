@@ -229,7 +229,7 @@ export type recordOptions<T> = {
   plugins?: RecordPlugin[];
   // departed, please use sampling options
   mousemoveWait?: number;
-  doc?: Document;
+  win?: Window;
   keepIframeSrcFn?: KeepIframeSrcFn;
 };
 
@@ -259,7 +259,7 @@ export type observerParam = {
   userTriggeredOnInput: boolean;
   collectFonts: boolean;
   slimDOMOptions: SlimDOMOptions;
-  doc: Document;
+  win: Window;
   mirror: Mirror;
   iframeManager: IframeManager;
   shadowDomManager: ShadowDomManager;

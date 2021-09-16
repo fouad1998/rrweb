@@ -48,10 +48,10 @@ export class ShadowDomManager {
     this.mirror = options.mirror;
   }
 
-  public addShadowRoot(shadowRoot: ShadowRoot, doc: Document) {
+  public addShadowRoot(shadowRoot: ShadowRoot, window: Window) {
     initMutationObserver(
       this.mutationCb,
-      doc,
+      window,
       this.bypassOptions.blockClass,
       this.bypassOptions.blockSelector,
       this.bypassOptions.maskTextClass,
@@ -71,7 +71,7 @@ export class ShadowDomManager {
       this.scrollCb,
       // https://gist.github.com/praveenpuglia/0832da687ed5a5d7a0907046c9ef1813
       // scroll is not allowed to pass the boundary, so we need to listen the shadow document
-      (shadowRoot as unknown) as Document,
+      ({ document: shadowRoot } as unknown) as Window,
       this.mirror,
       this.bypassOptions.blockClass,
       this.bypassOptions.sampling,

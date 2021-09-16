@@ -116,6 +116,7 @@ class DoubleLinkedList {
       }
     }
     if (n.__ln) {
+      //@ts-ignore
       delete n.__ln;
     }
     this.length--;
@@ -173,7 +174,7 @@ export default class MutationBuffer {
   private maskInputFn: MaskInputFn | undefined;
   private recordCanvas: boolean;
   private slimDOMOptions: SlimDOMOptions;
-  private doc: Document;
+  private window: Window;
 
   private mirror: Mirror;
   private iframeManager: IframeManager;
@@ -191,7 +192,7 @@ export default class MutationBuffer {
     maskInputFn: MaskInputFn | undefined,
     recordCanvas: boolean,
     slimDOMOptions: SlimDOMOptions,
-    doc: Document,
+    win: Window,
     mirror: Mirror,
     iframeManager: IframeManager,
     shadowDomManager: ShadowDomManager,
@@ -207,7 +208,7 @@ export default class MutationBuffer {
     this.recordCanvas = recordCanvas;
     this.slimDOMOptions = slimDOMOptions;
     this.emissionCallback = cb;
-    this.doc = doc;
+    this.window = win;
     this.mirror = mirror;
     this.iframeManager = iframeManager;
     this.shadowDomManager = shadowDomManager;
@@ -270,8 +271,9 @@ export default class MutationBuffer {
         : null;
       // ensure shadowHost is a Node, or doc.contains will throw an error
       const notInDoc =
-        !this.doc.contains(n) &&
-        (!(shadowHost instanceof Node) || !this.doc.contains(shadowHost));
+        !this.window.document.contains(n) &&
+        (!(shadowHost instanceof Node) ||
+          !this.window.document.contains(shadowHost));
       if (!n.parentNode || notInDoc) {
         return;
       }
@@ -283,7 +285,7 @@ export default class MutationBuffer {
         return addList.addNode(n);
       }
       let sn = serializeNodeWithId(n, {
-        doc: this.doc,
+        doc: this.window.document,
         map: this.mirror.map,
         blockClass: this.blockClass,
         blockSelector: this.blockSelector,
@@ -301,7 +303,7 @@ export default class MutationBuffer {
             this.iframeManager.addIframe(currentN);
           }
           if (hasShadowRoot(n)) {
-            this.shadowDomManager.addShadowRoot(n.shadowRoot, document);
+            this.shadowDomManager.addShadowRoot(n.shadowRoot, this.window);
           }
         },
         onIframeLoad: (iframe, childSn) => {
@@ -478,7 +480,7 @@ export default class MutationBuffer {
           this.attributes.push(item);
         }
         if (m.attributeName === 'style') {
-          const old = this.doc.createElement('span');
+          const old = this.window.document.createElement('span');
           if (m.oldValue) {
             old.setAttribute('style', m.oldValue);
           }
@@ -516,7 +518,7 @@ export default class MutationBuffer {
         } else {
           // overwrite attribute if the mutations was triggered in same time
           item.attributes[m.attributeName!] = transformAttribute(
-            this.doc,
+            this.window.document,
             (m.target as HTMLElement).tagName,
             m.attributeName!,
             value!,

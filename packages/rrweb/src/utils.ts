@@ -208,19 +208,21 @@ export function patch(
   }
 }
 
-export function getWindowHeight(): number {
+export function getWindowHeight(window: Window): number {
   return (
     window.innerHeight ||
-    (document.documentElement && document.documentElement.clientHeight) ||
-    (document.body && document.body.clientHeight)
+    (window.document.documentElement &&
+      window.document.documentElement.clientHeight) ||
+    (window.document.body && window.document.body.clientHeight)
   );
 }
 
-export function getWindowWidth(): number {
+export function getWindowWidth(window: Window): number {
   return (
     window.innerWidth ||
-    (document.documentElement && document.documentElement.clientWidth) ||
-    (document.body && document.body.clientWidth)
+    (window.document.documentElement &&
+      window.document.documentElement.clientWidth) ||
+    (window.document.body && window.document.body.clientWidth)
   );
 }
 

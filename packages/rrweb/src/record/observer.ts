@@ -60,7 +60,7 @@ type WindowWithAngularZone = Window & {
 
 export const mutationBuffers: MutationBuffer[] = [];
 
-const isCSSGroupingRuleSupported = typeof CSSGroupingRule !== "undefined"
+const isCSSGroupingRuleSupported = typeof CSSGroupingRule !== 'undefined';
 
 function getEventTarget(event: Event): EventTarget | null {
   try {
@@ -71,8 +71,10 @@ function getEventTarget(event: Event): EventTarget | null {
       }
     } else if (
       'path' in event &&
+      //@ts-ignore
       (event as { path: EventTarget[] }).path.length
     ) {
+      //@ts-ignore
       return (event as { path: EventTarget[] }).path[0];
     }
     return event.target;
@@ -83,7 +85,7 @@ function getEventTarget(event: Event): EventTarget | null {
 
 export function initMutationObserver(
   cb: mutationCallBack,
-  doc: Document,
+  window: Window,
   blockClass: blockClass,
   blockSelector: string | null,
   maskTextClass: maskTextClass,
@@ -114,12 +116,13 @@ export function initMutationObserver(
     maskInputFn,
     recordCanvas,
     slimDOMOptions,
-    doc,
+    window,
     mirror,
     iframeManager,
     shadowDomManager,
   );
   let mutationObserverCtor =
+    //@ts-ignore
     window.MutationObserver ||
     /**
      * Some websites may disable MutationObserver by removing it from the window object.
@@ -161,7 +164,7 @@ export function initMutationObserver(
 function initMoveObserver(
   cb: mousemoveCallBack,
   sampling: SamplingStrategy,
-  doc: Document,
+  window: Window,
   mirror: Mirror,
 ): listenerHandler {
   if (sampling.mousemove === false) {
@@ -228,9 +231,9 @@ function initMoveObserver(
     },
   );
   const handlers = [
-    on('mousemove', updatePosition, doc),
-    on('touchmove', updatePosition, doc),
-    on('drag', updatePosition, doc),
+    on('mousemove', updatePosition, window.document),
+    on('touchmove', updatePosition, window.document),
+    on('drag', updatePosition, window.document),
   ];
   return () => {
     handlers.forEach((h) => h());
@@ -239,7 +242,7 @@ function initMoveObserver(
 
 function initMouseInteractionObserver(
   cb: mouseInteractionCallBack,
-  doc: Document,
+  window: Window,
   mirror: Mirror,
   blockClass: blockClass,
   sampling: SamplingStrategy,
@@ -284,7 +287,7 @@ function initMouseInteractionObserver(
     .forEach((eventKey: keyof typeof MouseInteractions) => {
       const eventName = eventKey.toLowerCase();
       const handler = getHandler(eventKey);
-      handlers.push(on(eventName, handler, doc));
+      handlers.push(on(eventName, handler, window.document));
     });
   return () => {
     handlers.forEach((h) => h());
@@ -293,7 +296,7 @@ function initMouseInteractionObserver(
 
 export function initScrollObserver(
   cb: scrollCallback,
-  doc: Document,
+  window: Window,
   mirror: Mirror,
   blockClass: blockClass,
   sampling: SamplingStrategy,
@@ -304,8 +307,9 @@ export function initScrollObserver(
       return;
     }
     const id = mirror.getId(target as INode);
-    if (target === doc) {
-      const scrollEl = (doc.scrollingElement || doc.documentElement)!;
+    if (target === window.document) {
+      const scrollEl = (window.document.scrollingElement ||
+        window.document.documentElement)!;
       cb({
         id,
         x: scrollEl.scrollLeft,
@@ -319,17 +323,18 @@ export function initScrollObserver(
       });
     }
   }, sampling.scroll || 100);
-  return on('scroll', updatePosition, doc);
+  return on('scroll', updatePosition, window.document);
 }
 
 function initViewportResizeObserver(
   cb: viewportResizeCallback,
+  window: Window,
 ): listenerHandler {
   let lastH = -1;
   let lastW = -1;
   const updateDimension = throttle(() => {
-    const height = getWindowHeight();
-    const width = getWindowWidth();
+    const height = getWindowHeight(window);
+    const width = getWindowWidth(window);
     if (lastH !== height || lastW !== width) {
       cb({
         width: Number(width),
@@ -355,7 +360,7 @@ export const INPUT_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
 const lastInputValueMap: WeakMap<EventTarget, inputValue> = new WeakMap();
 function initInputObserver(
   cb: inputCallback,
-  doc: Document,
+  window: Window,
   mirror: Mirror,
   blockClass: blockClass,
   ignoreClass: string,
@@ -408,7 +413,7 @@ function initInputObserver(
     // the other radios with the same name attribute will be unchecked.
     const name: string | undefined = (target as HTMLInputElement).name;
     if (type === 'radio' && name && isChecked) {
-      doc
+      window.document
         .querySelectorAll(`input[type="radio"][name="${name}"]`)
         .forEach((el) => {
           if (el !== target) {
@@ -445,7 +450,7 @@ function initInputObserver(
   const events = sampling.input === 'last' ? ['change'] : ['input', 'change'];
   const handlers: Array<
     listenerHandler | hookResetter
-  > = events.map((eventName) => on(eventName, eventHandler, doc));
+  > = events.map((eventName) => on(eventName, eventHandler, window.document));
   const propertyDescriptor = Object.getOwnPropertyDescriptor(
     HTMLInputElement.prototype,
     'value',
@@ -478,7 +483,10 @@ function initInputObserver(
 function getNestedCSSRulePositions(rule: CSSRule): number[] {
   const positions: number[] = [];
   function recurse(childRule: CSSRule, pos: number[]) {
-    if (isCSSGroupingRuleSupported && childRule.parentRule instanceof CSSGroupingRule) {
+    if (
+      isCSSGroupingRuleSupported &&
+      childRule.parentRule instanceof CSSGroupingRule
+    ) {
       const rules = Array.from(
         (childRule.parentRule as CSSGroupingRule).cssRules,
       );
@@ -870,7 +878,7 @@ export function initObservers(
   mergeHooks(o, hooks);
   const mutationObserver = initMutationObserver(
     o.mutationCb,
-    o.doc,
+    o.win,
     o.blockClass,
     o.blockSelector,
     o.maskTextClass,
@@ -884,32 +892,35 @@ export function initObservers(
     o.mirror,
     o.iframeManager,
     o.shadowDomManager,
-    o.doc,
+    o.win.document,
   );
   const mousemoveHandler = initMoveObserver(
     o.mousemoveCb,
     o.sampling,
-    o.doc,
+    o.win,
     o.mirror,
   );
   const mouseInteractionHandler = initMouseInteractionObserver(
     o.mouseInteractionCb,
-    o.doc,
+    o.win,
     o.mirror,
     o.blockClass,
     o.sampling,
   );
   const scrollHandler = initScrollObserver(
     o.scrollCb,
-    o.doc,
+    o.win,
     o.mirror,
     o.blockClass,
     o.sampling,
   );
-  const viewportResizeHandler = initViewportResizeObserver(o.viewportResizeCb);
+  const viewportResizeHandler = initViewportResizeObserver(
+    o.viewportResizeCb,
+    o.win,
+  );
   const inputHandler = initInputObserver(
     o.inputCb,
-    o.doc,
+    o.win,
     o.mirror,
     o.blockClass,
     o.ignoreClass,

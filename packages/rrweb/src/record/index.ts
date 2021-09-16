@@ -60,7 +60,7 @@ function record<T = eventWithTime>(
     userTriggeredOnInput = false,
     collectFonts = false,
     plugins,
-    doc,
+    win,
     keepIframeSrcFn = () => false,
   } = options;
   // runtime checks for user options
@@ -120,6 +120,11 @@ function record<T = eventWithTime>(
 
   let lastFullSnapshotEvent: eventWithTime;
   let incrementalSnapshotCount = 0;
+  let workingWindow = typeof win === 'object' ? win : window;
+  let workingDocument =
+    typeof workingWindow.document === 'object'
+      ? workingWindow.document
+      : document;
   wrappedEmit = (e: eventWithTime, isCheckout?: boolean) => {
     if (
       mutationBuffers[0]?.isFrozen() &&
@@ -210,16 +215,16 @@ function record<T = eventWithTime>(
       wrapEvent({
         type: EventType.Meta,
         data: {
-          href: window.location.href,
-          width: getWindowWidth(),
-          height: getWindowHeight(),
+          href: workingWindow.location.href,
+          width: getWindowWidth(workingWindow),
+          height: getWindowHeight(workingWindow),
         },
       }),
       isCheckout,
     );
 
     mutationBuffers.forEach((buf) => buf.lock()); // don't allow any mirror modifications during snapshotting
-    const [node, idNodeMap] = snapshot(typeof doc === "object" ? doc : document, {
+    const [node, idNodeMap] = snapshot(workingDocument, {
       blockClass,
       blockSelector,
       maskTextClass,
@@ -234,7 +239,7 @@ function record<T = eventWithTime>(
           iframeManager.addIframe(n);
         }
         if (hasShadowRoot(n)) {
-          shadowDomManager.addShadowRoot(n.shadowRoot, document);
+          shadowDomManager.addShadowRoot(n.shadowRoot, workingWindow);
         }
       },
       onIframeLoad: (iframe, childSn) => {
@@ -255,18 +260,18 @@ function record<T = eventWithTime>(
           node,
           initialOffset: {
             left:
-              window.pageXOffset !== undefined
-                ? window.pageXOffset
-                : document?.documentElement.scrollLeft ||
-                  document?.body?.parentElement?.scrollLeft ||
-                  document?.body.scrollLeft ||
+              workingWindow.pageXOffset !== undefined
+                ? workingWindow.pageXOffset
+                : workingDocument?.documentElement.scrollLeft ||
+                  workingDocument?.body?.parentElement?.scrollLeft ||
+                  workingDocument?.body.scrollLeft ||
                   0,
             top:
-              window.pageYOffset !== undefined
-                ? window.pageYOffset
-                : document?.documentElement.scrollTop ||
-                  document?.body?.parentElement?.scrollTop ||
-                  document?.body.scrollTop ||
+              workingWindow.pageYOffset !== undefined
+                ? workingWindow.pageYOffset
+                : workingDocument?.documentElement.scrollTop ||
+                  workingDocument?.body?.parentElement?.scrollTop ||
+                  workingDocument?.body.scrollTop ||
                   0,
           },
         },
@@ -288,7 +293,7 @@ function record<T = eventWithTime>(
       }),
     );
 
-    const observe = (doc: Document) => {
+    const observe = (window: Window) => {
       return initObservers(
         {
           mutationCb: wrappedMutationEmit,
@@ -393,7 +398,7 @@ function record<T = eventWithTime>(
           recordCanvas,
           userTriggeredOnInput,
           collectFonts,
-          doc,
+          win: window,
           maskInputFn,
           maskTextFn,
           blockSelector,
@@ -422,16 +427,16 @@ function record<T = eventWithTime>(
     };
 
     iframeManager.addLoadListener((iframeEl) => {
-      handlers.push(observe(iframeEl.contentDocument!));
+      handlers.push(observe(iframeEl.contentWindow!));
     });
 
     const init = () => {
       takeFullSnapshot();
-      handlers.push(observe(document));
+      handlers.push(observe(workingWindow));
     };
     if (
-      document.readyState === 'interactive' ||
-      document.readyState === 'complete'
+      workingDocument.readyState === 'interactive' ||
+      workingDocument.readyState === 'complete'
     ) {
       init();
     } else {
@@ -447,7 +452,7 @@ function record<T = eventWithTime>(
             );
             init();
           },
-          window,
+          workingWindow,
         ),
       );
     }

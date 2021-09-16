@@ -296,7 +296,7 @@ function initMouseInteractionObserver(
 
 export function initScrollObserver(
   cb: scrollCallback,
-  window: Window,
+  doc: Document,
   mirror: Mirror,
   blockClass: blockClass,
   sampling: SamplingStrategy,
@@ -307,9 +307,8 @@ export function initScrollObserver(
       return;
     }
     const id = mirror.getId(target as INode);
-    if (target === window.document) {
-      const scrollEl = (window.document.scrollingElement ||
-        window.document.documentElement)!;
+    if (target === doc) {
+      const scrollEl = (doc.scrollingElement || document.documentElement)!;
       cb({
         id,
         x: scrollEl.scrollLeft,
@@ -323,7 +322,7 @@ export function initScrollObserver(
       });
     }
   }, sampling.scroll || 100);
-  return on('scroll', updatePosition, window.document);
+  return on('scroll', updatePosition, doc);
 }
 
 function initViewportResizeObserver(
@@ -466,12 +465,19 @@ function initInputObserver(
   if (propertyDescriptor && propertyDescriptor.set) {
     handlers.push(
       ...hookProperties.map((p) =>
-        hookSetter<HTMLElement>(p[0], p[1], {
-          set() {
-            // mock to a normal event
-            eventHandler({ target: this } as Event);
+        hookSetter<HTMLElement>(
+          p[0],
+          p[1],
+          {
+            set() {
+              // mock to a normal event
+              eventHandler({ target: this } as Event);
+            },
           },
-        }),
+          void 0,
+          //@ts-ignore
+          window,
+        ),
       ),
     );
   }
@@ -664,6 +670,7 @@ function initCanvasMutationObserver(
   cb: canvasMutationCallback,
   blockClass: blockClass,
   mirror: Mirror,
+  window: Window,
 ): listenerHandler {
   const props = Object.getOwnPropertyNames(CanvasRenderingContext2D.prototype);
   const handlers: listenerHandler[] = [];
@@ -730,6 +737,9 @@ function initCanvasMutationObserver(
             });
           },
         },
+        void 0,
+        //@ts-ignore
+        window,
       );
       handlers.push(hookHandler);
     }
@@ -909,7 +919,7 @@ export function initObservers(
   );
   const scrollHandler = initScrollObserver(
     o.scrollCb,
-    o.win,
+    o.win.document,
     o.mirror,
     o.blockClass,
     o.sampling,
@@ -943,7 +953,12 @@ export function initObservers(
     o.mirror,
   );
   const canvasMutationObserver = o.recordCanvas
-    ? initCanvasMutationObserver(o.canvasMutationCb, o.blockClass, o.mirror)
+    ? initCanvasMutationObserver(
+        o.canvasMutationCb,
+        o.blockClass,
+        o.mirror,
+        o.win,
+      )
     : () => {};
   const fontObserver = o.collectFonts ? initFontObserver(o.fontCb) : () => {};
   // plugins

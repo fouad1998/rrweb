@@ -116,8 +116,6 @@ function record<T = eventWithTime>(
       ? _slimDOMOptions
       : {};
 
-  polyfill();
-
   let lastFullSnapshotEvent: eventWithTime;
   let incrementalSnapshotCount = 0;
   let workingWindow = typeof win === 'object' ? win : window;
@@ -125,6 +123,8 @@ function record<T = eventWithTime>(
     typeof workingWindow.document === 'object'
       ? workingWindow.document
       : document;
+  //@ts-ignore
+  polyfill(workingWindow);
   wrappedEmit = (e: eventWithTime, isCheckout?: boolean) => {
     if (
       mutationBuffers[0]?.isFrozen() &&

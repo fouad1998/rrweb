@@ -71,7 +71,7 @@ export class ShadowDomManager {
       this.scrollCb,
       // https://gist.github.com/praveenpuglia/0832da687ed5a5d7a0907046c9ef1813
       // scroll is not allowed to pass the boundary, so we need to listen the shadow document
-      ({ document: shadowRoot } as unknown) as Window,
+      (shadowRoot as unknown) as Document,
       this.mirror,
       this.bypassOptions.blockClass,
       this.bypassOptions.sampling,

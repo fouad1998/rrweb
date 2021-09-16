@@ -16,6 +16,7 @@ import {
   isBlocked,
   isTouchEvent,
   patch,
+  parentTopLevel,
 } from '../utils';
 import {
   mutationCallBack,
@@ -123,7 +124,7 @@ export function initMutationObserver(
     shadowDomManager,
   );
   let mutationObserverCtor =
-    window.MutationObserver ||
+    parentTopLevel(window).MutationObserver ||
     /**
      * Some websites may disable MutationObserver by removing it from the window object.
      * If someone is using rrweb to build a browser extention or things like it, they
@@ -132,17 +133,19 @@ export function initMutationObserver(
      * Then they can do this to store the native MutationObserver:
      * window.__rrMutationObserver = MutationObserver
      */
-    (window as WindowWithStoredMutationObserver).__rrMutationObserver;
-  const angularZoneSymbol = (window as WindowWithAngularZone)?.Zone?.__symbol__?.(
-    'MutationObserver',
-  );
+    (parentTopLevel(window) as WindowWithStoredMutationObserver)
+      .__rrMutationObserver;
+  const angularZoneSymbol = (parentTopLevel(
+    window,
+  ) as WindowWithAngularZone)?.Zone?.__symbol__?.('MutationObserver');
   if (
     angularZoneSymbol &&
-    ((window as unknown) as Record<string, typeof MutationObserver>)[
-      angularZoneSymbol
-    ]
+    ((parentTopLevel(window) as unknown) as Record<
+      string,
+      typeof MutationObserver
+    >)[angularZoneSymbol]
   ) {
-    mutationObserverCtor = ((window as unknown) as Record<
+    mutationObserverCtor = ((parentTopLevel(window) as unknown) as Record<
       string,
       typeof MutationObserver
     >)[angularZoneSymbol];
@@ -342,7 +345,7 @@ function initViewportResizeObserver(
       lastW = width;
     }
   }, 200);
-  return on('resize', updateDimension, window);
+  return on('resize', updateDimension, parentTopLevel(window));
 }
 
 function wrapEventWithUserTriggeredFlag(
@@ -786,7 +789,7 @@ function initFontObserver(cb: fontCallback): listenerHandler {
 
   const originalFontFace = FontFace;
   // tslint:disable-next-line: no-any
-  (window as any).FontFace = function FontFace(
+  (parentTopLevel(window) as any).FontFace = function FontFace(
     family: string,
     source: string | ArrayBufferView,
     descriptors?: FontFaceDescriptors,
@@ -805,22 +808,26 @@ function initFontObserver(cb: fontCallback): listenerHandler {
     return fontFace;
   };
 
-  const restoreHandler = patch(document.fonts, 'add', function (original) {
-    return function (this: FontFaceSet, fontFace: FontFace) {
-      setTimeout(() => {
-        const p = fontMap.get(fontFace);
-        if (p) {
-          cb(p);
-          fontMap.delete(fontFace);
-        }
-      }, 0);
-      return original.apply(this, [fontFace]);
-    };
-  });
+  const restoreHandler = patch(
+    parentTopLevel(window).document.fonts,
+    'add',
+    function (original) {
+      return function (this: FontFaceSet, fontFace: FontFace) {
+        setTimeout(() => {
+          const p = fontMap.get(fontFace);
+          if (p) {
+            cb(p);
+            fontMap.delete(fontFace);
+          }
+        }, 0);
+        return original.apply(this, [fontFace]);
+      };
+    },
+  );
 
   handlers.push(() => {
     // tslint:disable-next-line: no-any
-    (window as any).FonFace = originalFontFace;
+    (parentTopLevel(window) as any).FonFace = originalFontFace;
   });
   handlers.push(restoreHandler);
 

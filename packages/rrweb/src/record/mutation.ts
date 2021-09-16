@@ -29,6 +29,7 @@ import {
   isIgnored,
   isIframeINode,
   hasShadowRoot,
+  parentTopLevel,
 } from '../utils';
 import { IframeManager } from './iframe-manager';
 import { ShadowDomManager } from './shadow-dom-manager';
@@ -301,7 +302,10 @@ export default class MutationBuffer {
             this.iframeManager.addIframe(currentN);
           }
           if (hasShadowRoot(n)) {
-            this.shadowDomManager.addShadowRoot(n.shadowRoot, document);
+            this.shadowDomManager.addShadowRoot(
+              n.shadowRoot,
+              parentTopLevel(window).document,
+            );
           }
         },
         onIframeLoad: (iframe, childSn) => {

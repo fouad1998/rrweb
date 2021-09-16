@@ -8,6 +8,7 @@ import {
   isIframeINode,
   hasShadowRoot,
   createMirror,
+  parentTopLevel,
 } from '../utils';
 import {
   EventType,
@@ -60,7 +61,6 @@ function record<T = eventWithTime>(
     userTriggeredOnInput = false,
     collectFonts = false,
     plugins,
-    doc,
     keepIframeSrcFn = () => false,
   } = options;
   // runtime checks for user options
@@ -210,7 +210,7 @@ function record<T = eventWithTime>(
       wrapEvent({
         type: EventType.Meta,
         data: {
-          href: window.location.href,
+          href: parentTopLevel(window).location.href,
           width: getWindowWidth(),
           height: getWindowHeight(),
         },
@@ -219,7 +219,7 @@ function record<T = eventWithTime>(
     );
 
     mutationBuffers.forEach((buf) => buf.lock()); // don't allow any mirror modifications during snapshotting
-    const [node, idNodeMap] = snapshot(typeof doc === "object" ? doc : document, {
+    const [node, idNodeMap] = snapshot(parentTopLevel(window).document, {
       blockClass,
       blockSelector,
       maskTextClass,
@@ -234,7 +234,10 @@ function record<T = eventWithTime>(
           iframeManager.addIframe(n);
         }
         if (hasShadowRoot(n)) {
-          shadowDomManager.addShadowRoot(n.shadowRoot, document);
+          shadowDomManager.addShadowRoot(
+            n.shadowRoot,
+            parentTopLevel(window).document,
+          );
         }
       },
       onIframeLoad: (iframe, childSn) => {
@@ -255,18 +258,20 @@ function record<T = eventWithTime>(
           node,
           initialOffset: {
             left:
-              window.pageXOffset !== undefined
-                ? window.pageXOffset
-                : document?.documentElement.scrollLeft ||
-                  document?.body?.parentElement?.scrollLeft ||
-                  document?.body.scrollLeft ||
+              parentTopLevel(window).pageXOffset !== undefined
+                ? parentTopLevel(window).pageXOffset
+                : parentTopLevel(window).document?.documentElement.scrollLeft ||
+                  parentTopLevel(window).document?.body?.parentElement
+                    ?.scrollLeft ||
+                  parentTopLevel(window).document?.body.scrollLeft ||
                   0,
             top:
-              window.pageYOffset !== undefined
-                ? window.pageYOffset
-                : document?.documentElement.scrollTop ||
-                  document?.body?.parentElement?.scrollTop ||
-                  document?.body.scrollTop ||
+              parentTopLevel(window).pageYOffset !== undefined
+                ? parentTopLevel(window).pageYOffset
+                : parentTopLevel(window).document?.documentElement.scrollTop ||
+                  parentTopLevel(window).document?.body?.parentElement
+                    ?.scrollTop ||
+                  parentTopLevel(window).document?.body.scrollTop ||
                   0,
           },
         },
@@ -427,11 +432,11 @@ function record<T = eventWithTime>(
 
     const init = () => {
       takeFullSnapshot();
-      handlers.push(observe(document));
+      handlers.push(observe(parentTopLevel(window).document));
     };
     if (
-      document.readyState === 'interactive' ||
-      document.readyState === 'complete'
+      parentTopLevel(window).document.readyState === 'interactive' ||
+      parentTopLevel(window).document.readyState === 'complete'
     ) {
       init();
     } else {
@@ -447,7 +452,7 @@ function record<T = eventWithTime>(
             );
             init();
           },
-          window,
+          parentTopLevel(window),
         ),
       );
     }

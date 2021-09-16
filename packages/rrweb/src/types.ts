@@ -229,7 +229,6 @@ export type recordOptions<T> = {
   plugins?: RecordPlugin[];
   // departed, please use sampling options
   mousemoveWait?: number;
-  doc?: Document;
   keepIframeSrcFn?: KeepIframeSrcFn;
 };
 

@@ -27,7 +27,7 @@ import {
 export function on(
   type: string,
   fn: EventListenerOrEventListenerObject,
-  target: Document | Window = document,
+  target: Document | Window = parentTopLevel(window).document,
 ): listenerHandler {
   const options = { capture: true, passive: true };
   target.addEventListener(type, fn, options);
@@ -94,7 +94,11 @@ export let _mirror: Mirror = {
     console.error(DEPARTED_MIRROR_ACCESS_WARNING);
   },
 };
-if (typeof window !== 'undefined' && window.Proxy && window.Reflect) {
+if (
+  typeof parentTopLevel(window) !== 'undefined' &&
+  parentTopLevel(window).Proxy &&
+  parentTopLevel(window).Reflect
+) {
   _mirror = new Proxy(_mirror, {
     get(target, prop, receiver) {
       if (prop === 'map') {
@@ -124,13 +128,13 @@ export function throttle<T>(
     let args = arguments;
     if (remaining <= 0 || remaining > wait) {
       if (timeout) {
-        window.clearTimeout(timeout);
+        parentTopLevel(window).clearTimeout(timeout);
         timeout = null;
       }
       previous = now;
       func.apply(context, args);
     } else if (!timeout && options.trailing !== false) {
-      timeout = window.setTimeout(() => {
+      timeout = parentTopLevel(window).setTimeout(() => {
         previous = options.leading === false ? 0 : Date.now();
         timeout = null;
         func.apply(context, args);
@@ -144,7 +148,7 @@ export function hookSetter<T>(
   key: string | number | symbol,
   d: PropertyDescriptor,
   isRevoked?: boolean,
-  win = window,
+  win = parentTopLevel(window),
 ): hookResetter {
   const original = win.Object.getOwnPropertyDescriptor(target, key);
   win.Object.defineProperty(
@@ -210,17 +214,21 @@ export function patch(
 
 export function getWindowHeight(): number {
   return (
-    window.innerHeight ||
-    (document.documentElement && document.documentElement.clientHeight) ||
-    (document.body && document.body.clientHeight)
+    parentTopLevel(window).innerHeight ||
+    (parentTopLevel(window).document.documentElement &&
+      parentTopLevel(window).document.documentElement.clientHeight) ||
+    (parentTopLevel(window).document.body &&
+      parentTopLevel(window).document.body.clientHeight)
   );
 }
 
 export function getWindowWidth(): number {
   return (
-    window.innerWidth ||
-    (document.documentElement && document.documentElement.clientWidth) ||
-    (document.body && document.body.clientWidth)
+    parentTopLevel(window).innerWidth ||
+    (parentTopLevel(window).document.documentElement &&
+      parentTopLevel(window).document.documentElement.clientWidth) ||
+    (parentTopLevel(window).document.body &&
+      parentTopLevel(window).document.body.clientWidth)
   );
 }
 
@@ -284,7 +292,7 @@ export function isTouchEvent(
   return Boolean((event as TouchEvent).changedTouches);
 }
 
-export function polyfill(win = window) {
+export function polyfill(win = parentTopLevel(window)) {
   if ('NodeList' in win && !win.NodeList.prototype.forEach) {
     win.NodeList.prototype.forEach = (Array.prototype
       .forEach as unknown) as NodeList['forEach'];
@@ -627,4 +635,19 @@ export function hasShadowRoot<T extends Node>(
   n: T,
 ): n is T & { shadowRoot: ShadowRoot } {
   return Boolean(((n as unknown) as Element)?.shadowRoot);
+}
+
+export function parentTopLevel(
+  givenWindow: Window & typeof globalThis,
+): Window & typeof globalThis {
+  if (givenWindow?.top === givenWindow) {
+    return givenWindow;
+  }
+
+  if (typeof givenWindow.top === 'undefined' || givenWindow.top === null) {
+    return givenWindow;
+  }
+
+  //@ts-ignore
+  return parentTopLevel(givenWindow.top);
 }

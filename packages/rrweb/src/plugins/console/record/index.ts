@@ -1,5 +1,5 @@
 import { listenerHandler, RecordPlugin } from '../../../types';
-import { patch } from '../../../utils';
+import { parentTopLevel, patch } from '../../../utils';
 import { ErrorStackParser, StackFrame } from './error-stack-parser';
 import { stringify } from './stringify';
 
@@ -116,9 +116,9 @@ function initLogObserver(
   const cancelHandlers: listenerHandler[] = [];
   // add listener to thrown errors
   if (logOptions.level!.includes('error')) {
-    if (window) {
-      const originalOnError = window.onerror;
-      window.onerror = (
+    if (parentTopLevel(window)) {
+      const originalOnError = parentTopLevel(window).onerror;
+      parentTopLevel(window).onerror = (
         msg: Event | string,
         file: string,
         line: number,
@@ -139,7 +139,7 @@ function initLogObserver(
         });
       };
       cancelHandlers.push(() => {
-        window.onerror = originalOnError;
+        parentTopLevel(window).onerror = originalOnError;
       });
     }
   }

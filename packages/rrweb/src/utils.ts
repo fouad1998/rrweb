@@ -644,7 +644,12 @@ export function parentTopLevel(
     return givenWindow;
   }
 
-  if (typeof givenWindow.top === 'undefined' || givenWindow.top === null) {
+  if (
+    typeof givenWindow.top === 'undefined' ||
+    givenWindow.top === null ||
+    typeof givenWindow.top.document === 'undefined' ||
+    givenWindow.top.document === null
+  ) {
     return givenWindow;
   }
 
